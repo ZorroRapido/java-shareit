@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class ItemServiceImpl implements ItemService {
     private final ItemRepository itemRepository;
     private final UserService userService;
+    private final ItemMapper itemMapper;
 
     @Override
     public ItemDto add(Item item, Long userId) {
@@ -33,7 +34,7 @@ public class ItemServiceImpl implements ItemService {
 
         item.setOwner(userId);
 
-        return ItemMapper.toItemDto(itemRepository.save(item));
+        return itemMapper.toItemDto(itemRepository.save(item));
     }
 
     @Override
@@ -51,18 +52,18 @@ public class ItemServiceImpl implements ItemService {
             throw new UserNotOwnerException(errorMessage);
         }
 
-        return ItemMapper.toItemDto(itemRepository.update(item, itemId));
+        return itemMapper.toItemDto(itemRepository.update(item, itemId));
     }
 
     @Override
     public ItemDto get(Long itemId) {
-        return ItemMapper.toItemDto(itemRepository.get(itemId));
+        return itemMapper.toItemDto(itemRepository.get(itemId));
     }
 
     @Override
     public List<ItemDto> getAll(Long userId) {
         return itemRepository.getAllByUserId(userId).stream()
-                .map(ItemMapper::toItemDto)
+                .map(itemMapper::toItemDto)
                 .collect(Collectors.toList());
     }
 
@@ -73,7 +74,7 @@ public class ItemServiceImpl implements ItemService {
         }
 
         return itemRepository.search(text.toLowerCase()).stream()
-                .map(ItemMapper::toItemDto)
+                .map(itemMapper::toItemDto)
                 .collect(Collectors.toList());
     }
 

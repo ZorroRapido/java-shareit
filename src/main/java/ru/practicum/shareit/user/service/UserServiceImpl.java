@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private static final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+    private final UserMapper userMapper;
 
     @Override
     public UserDto create(User user) throws EmailAlreadyExistsException {
@@ -31,7 +32,7 @@ public class UserServiceImpl implements UserService {
             throw new EmailAlreadyExistsException(errorMessage);
         }
 
-        return UserMapper.toUserDto(userRepository.save(user));
+        return userMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
@@ -50,7 +51,7 @@ public class UserServiceImpl implements UserService {
 
         validate(user);
 
-        return UserMapper.toUserDto(userRepository.update(user, userId));
+        return userMapper.toUserDto(userRepository.update(user, userId));
     }
 
     @Override
@@ -61,13 +62,13 @@ public class UserServiceImpl implements UserService {
             throw new UserNotFoundException(errorMessage);
         }
 
-        return UserMapper.toUserDto(userRepository.get(userId));
+        return userMapper.toUserDto(userRepository.get(userId));
     }
 
     @Override
     public List<UserDto> getAll() {
         return userRepository.getAll().stream()
-                .map(UserMapper::toUserDto)
+                .map(userMapper::toUserDto)
                 .collect(Collectors.toList());
     }
 
