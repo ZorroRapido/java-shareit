@@ -7,17 +7,21 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import ru.practicum.shareit.booking.controller.BookingController;
 import ru.practicum.shareit.item.controller.ItemController;
 import ru.practicum.shareit.user.controller.UserController;
 
+import javax.validation.ValidationException;
+import java.util.Map;
 
 @Slf4j
-@RestControllerAdvice(assignableTypes = {UserController.class, ItemController.class})
+@RestControllerAdvice(assignableTypes = {UserController.class, ItemController.class, BookingController.class})
 public class ErrorHandler {
+
     @ExceptionHandler
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleUserNotFoundException(final UserNotFoundException e) {
-        return new ErrorResponse(e.getMessage());
+    public Map<String, String> handleUserNotFoundException(final UserNotFoundException e) {
+        return Map.of("error", e.getMessage());
     }
 
     @ExceptionHandler
@@ -28,9 +32,15 @@ public class ErrorHandler {
 
     @ExceptionHandler
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handleValidationException(MethodArgumentNotValidException e) {
+    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.warn(e.getFieldErrors().get(0).getDefaultMessage());
         return new ErrorResponse(e.getFieldErrors().get(0).getDefaultMessage());
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleValidationException(ValidationException e) {
+        return new ErrorResponse(e.getMessage());
     }
 
     @ExceptionHandler
@@ -41,8 +51,26 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler
-    @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ErrorResponse handleUserNotOwnerException(final UserNotOwnerException e) {
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleNotEnoughRightsException(final NotEnoughRightsException e) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleItemNotFoundException(final ItemNotFoundException e) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleNotAvailableForBookingException(final NotAvailableForBookingException e) {
+        return new ErrorResponse(e.getMessage());
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleBookingNotFoundException(final BookingNotFoundException e) {
         return new ErrorResponse(e.getMessage());
     }
 }
