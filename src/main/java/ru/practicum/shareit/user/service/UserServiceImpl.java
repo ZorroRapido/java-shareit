@@ -26,17 +26,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDto create(User user) throws EmailAlreadyExistsException {
-        User savedUser;
-
         try {
-            savedUser = userRepository.save(user);
+            return userMapper.toUserDto(userRepository.save(user));
         } catch (Exception e) {
             String errorMessage = String.format("Пользователь с e-mail = '%s' уже зарегистрирован!", user.getEmail());
             log.warn(errorMessage);
             throw new EmailAlreadyExistsException(errorMessage);
         }
-
-        return userMapper.toUserDto(savedUser);
     }
 
     @Override
