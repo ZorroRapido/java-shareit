@@ -3,6 +3,7 @@ package ru.practicum.shareit.user.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exception.EmailAlreadyExistsException;
 import ru.practicum.shareit.exception.UserNotFoundException;
 import ru.practicum.shareit.user.mapper.UserMapper;
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
     private static final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
     private final UserMapper userMapper;
 
+    @Transactional
     @Override
     public UserDto create(User user) throws EmailAlreadyExistsException {
         try {
@@ -35,6 +37,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Transactional
     @Override
     public UserDto update(User user, Long userId) {
         if (!userRepository.existsById(userId)) {
@@ -64,6 +67,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserDto(userRepository.save(oldUser));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public UserDto get(Long userId) {
         if (!userRepository.existsById(userId)) {
@@ -75,6 +79,7 @@ public class UserServiceImpl implements UserService {
         return userMapper.toUserDto(userRepository.getReferenceById(userId));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<UserDto> getAll() {
         return userRepository.findAll().stream()
@@ -82,6 +87,7 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     @Override
     public void delete(Long userId) {
         userRepository.deleteById(userId);

@@ -3,6 +3,7 @@ package ru.practicum.shareit.item.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.repository.BookingRepository;
@@ -40,6 +41,7 @@ public class ItemServiceImpl implements ItemService {
     private final CommentMapper commentMapper;
     private final BookingMapper bookingMapper;
 
+    @Transactional
     @Override
     public ItemDto add(ItemDto itemDto, Long userId) {
         checkUserExistence(userId);
@@ -50,9 +52,10 @@ public class ItemServiceImpl implements ItemService {
         return itemMapper.toItemDto(itemRepository.save(item));
     }
 
+    @Transactional
     @Override
     public ItemDto edit(ItemDto itemDto, Long itemId, Long userId) {
-        // checkUserExistence(userId);
+        checkUserExistence(userId);
         checkItemExistence(itemId);
 
         Item item = itemRepository.getReferenceById(itemId);
@@ -78,6 +81,7 @@ public class ItemServiceImpl implements ItemService {
         return itemMapper.toItemDto(itemRepository.save(item));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public ItemDto get(Long itemId, Long userId) {
         checkItemExistence(itemId);
@@ -95,6 +99,7 @@ public class ItemServiceImpl implements ItemService {
         return itemDto;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<ItemDto> getAll(Long userId) {
         List<ItemDto> allItems = itemRepository.findByOwnerId(userId).stream()
@@ -119,6 +124,7 @@ public class ItemServiceImpl implements ItemService {
         return allItems;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<ItemDto> search(String text) {
         if (text.isBlank()) {
@@ -130,6 +136,7 @@ public class ItemServiceImpl implements ItemService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     @Override
     public CommentDto addComment(CommentDto commentDto, Long itemId, Long userId) {
         checkUserExistence(userId);

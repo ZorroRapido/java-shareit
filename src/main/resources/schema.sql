@@ -53,10 +53,3 @@ CREATE TABLE IF NOT EXISTS comments
     FOREIGN KEY (item_id) REFERENCES items (id) ON DELETE CASCADE,
     FOREIGN KEY (author_id) REFERENCES users (id) ON DELETE CASCADE
 );
-
---
--- drop table users cascade;
--- drop table requests cascade;
--- drop table items cascade;
--- drop table bookings cascade;
--- drop table comments cascade;

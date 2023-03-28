@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.dto.BookingInputDto;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
@@ -39,6 +40,7 @@ public class BookingServiceImpl implements BookingService {
     private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
 
+    @Transactional
     @Override
     public BookingDto add(BookingInputDto bookingInputDto, Long userId) {
         checkUserExistence(userId);
@@ -54,6 +56,7 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toBookingDto(bookingRepository.save(booking));
     }
 
+    @Transactional
     @Override
     public BookingDto updateStatus(Long bookingId, Boolean approved, Long userId) {
         checkBookingExistence(bookingId);
@@ -80,6 +83,7 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toBookingDto(bookingRepository.save(booking));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public BookingDto get(Long bookingId, Long userId) {
         checkUserExistence(userId);
@@ -97,6 +101,7 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toBookingDto(bookingRepository.getReferenceById(bookingId));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<BookingDto> getAllBookingsByUserId(Long userId, String state) {
         checkUserExistence(userId);
@@ -135,6 +140,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<BookingDto> getAllBookingsForUserItems(Long userId, String state) {
         checkUserExistence(userId);
