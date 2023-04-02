@@ -2,6 +2,8 @@ package ru.practicum.shareit.item.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
@@ -20,6 +22,7 @@ import ru.practicum.shareit.item.repository.CommentRepository;
 import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
 
+import javax.validation.ValidationException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -33,6 +36,7 @@ import static ru.practicum.shareit.booking.model.Status.APPROVED;
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
 
+    private static final Sort ID_SORT = Sort.by("id");
     private final UserRepository userRepository;
     private final ItemRepository itemRepository;
     private final BookingRepository bookingRepository;
@@ -101,8 +105,18 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ItemDto> getAll(Long userId) {
-        List<ItemDto> allItems = itemRepository.findByOwnerId(userId).stream()
+    public List<ItemDto> getAll(Integer from, Integer size, Long userId) {
+        checkUserExistence(userId);
+
+        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE, ID_SORT);
+
+        if (from != null && size != null) {
+            validatePageRequestParams(from, size);
+
+            pageRequest = PageRequest.of(from / size, size, ID_SORT);
+        }
+
+        List<ItemDto> allItems = itemRepository.findByOwnerId(userId, pageRequest).stream()
                 .map(itemMapper::toItemDto)
                 .sorted(Comparator.comparing(ItemDto::getId))
                 .collect(Collectors.toList());
@@ -126,14 +140,24 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ItemDto> search(String text) {
+    public List<ItemDto> search(String text, Integer from, Integer size) {
         if (text.isBlank()) {
             return new ArrayList<>();
         }
 
-        return itemRepository.search(text.toLowerCase()).stream()
-                .map(itemMapper::toItemDto)
-                .collect(Collectors.toList());
+        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE, ID_SORT);
+
+        if (from != null && size != null) {
+            validatePageRequestParams(from, size);
+
+            pageRequest = PageRequest.of(from / size, size, ID_SORT);
+        }
+
+        List<ItemDto> itemDtos = new ArrayList<>();
+        itemRepository.search(text.toLowerCase(), pageRequest).forEach(item ->
+                itemDtos.add(itemMapper.toItemDto(item)));
+
+        return itemDtos;
     }
 
     @Transactional
@@ -200,5 +224,17 @@ public class ItemServiceImpl implements ItemService {
                 .filter(booking -> booking.getStart().isAfter(dateTime))
                 .min(Comparator.comparing(Booking::getStart))
                 .orElse(null);
+    }
+
+    private void validatePageRequestParams(Integer from, Integer size) {
+        if (size == 0) {
+            log.warn("Параметр size должен быть больше 0!");
+            throw new ValidationException("Параметр size должен быть больше 0!");
+        }
+
+        if (from < 0 || size < 0) {
+            log.warn("Параметры from и size не могут быть отрицательными!");
+            throw new ValidationException("Параметры from и size не могут быть отрицательными!");
+        }
     }
 }

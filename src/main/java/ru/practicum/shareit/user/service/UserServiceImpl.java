@@ -71,7 +71,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDto get(Long userId) {
         if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользовать с id = %d не найден!", userId);
+            String errorMessage = String.format("Пользователь с id = %d не найден!", userId);
             log.warn(errorMessage);
             throw new UserNotFoundException(errorMessage);
         }
