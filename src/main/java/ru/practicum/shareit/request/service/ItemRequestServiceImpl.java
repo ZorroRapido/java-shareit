@@ -6,14 +6,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.common.ConsistencyService;
+import ru.practicum.shareit.common.service.ConsistencyService;
+import ru.practicum.shareit.common.util.PageRequestUtils;
 import ru.practicum.shareit.request.dto.ItemRequestDto;
 import ru.practicum.shareit.request.mapper.ItemRequestMapper;
 import ru.practicum.shareit.request.model.ItemRequest;
 import ru.practicum.shareit.request.repository.ItemRequestRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
 
-import javax.validation.ValidationException;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -56,13 +56,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     @Override
     public List<ItemRequestDto> getAll(Integer from, Integer size, Long userId) {
         Sort sort = Sort.by(Sort.Direction.DESC, "created");
-        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE, sort);
-
-        if (from != null && size != null) {
-            validatePageRequestParams(from, size);
-
-            pageRequest = PageRequest.of(from / size, size, sort);
-        }
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, sort);
 
         return itemRequestRepository.findAll(pageRequest).stream()
                 .filter(itemRequest -> !itemRequest.getRequester().getId().equals(userId))
@@ -77,17 +71,5 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         consistencyService.checkItemRequestExistence(requestId);
 
         return itemRequestMapper.toItemRequestDto(itemRequestRepository.getReferenceById(requestId));
-    }
-
-    private void validatePageRequestParams(Integer from, Integer size) {
-        if (size == 0) {
-            log.warn("Параметр size должен быть больше 0!");
-            throw new ValidationException("Параметр size должен быть больше 0!");
-        }
-
-        if (from < 0 || size < 0) {
-            log.warn("Параметры from и size не могут быть отрицательными!");
-            throw new ValidationException("Параметры from и size не могут быть отрицательными!");
-        }
     }
 }

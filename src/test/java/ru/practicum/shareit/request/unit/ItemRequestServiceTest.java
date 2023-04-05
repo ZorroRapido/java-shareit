@@ -13,6 +13,7 @@ import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.service.UserService;
 
+import javax.validation.ValidationException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,8 +34,8 @@ public class ItemRequestServiceTest {
     private final UserDto userDto1 = new UserDto(101L, "AlexOne", "alexone@alex.ru");
     private final User user2 = new User(102L, "AlexTwo", "alextwo@alex.ru");
 
-    private final ItemRequestDto itemRequestDto = new ItemRequestDto(100L, "ItemRequest description",
-            userDto1, LocalDateTime.of(2022, 1, 2, 3, 4, 5), null);
+    private final ItemRequestDto itemRequestDto = new ItemRequestDto(100L, "ItemRequest description", userDto1,
+            LocalDateTime.of(2022, 1, 2, 3, 4, 5), null);
 
     @Test
     void shouldCreateItemRequest() {
@@ -62,7 +63,7 @@ public class ItemRequestServiceTest {
     }
 
     @Test
-    void shouldReturnAllItemRequestsWhenSizeNotNullAndNull() {
+    void shouldReturnAllItemRequestsWhenSizeNotNull() {
         UserDto userDto = userService.create(user1);
         UserDto requesterDto = userService.create(user2);
 
@@ -74,7 +75,7 @@ public class ItemRequestServiceTest {
     }
 
     @Test
-    void shouldReturnAllItemRequestsWhenSizeNull() {
+    void shouldReturnAllItemRequestsWhenSizeIsNull() {
         UserDto userDto = userService.create(user1);
         UserDto requesterDto = userService.create(user2);
 
@@ -83,6 +84,42 @@ public class ItemRequestServiceTest {
         List<ItemRequestDto> listItemRequest = itemRequestService.getAll(0, null, userDto.getId());
 
         assertThat(listItemRequest.size(), equalTo(2));
+    }
+
+    @Test
+    void shouldExceptionWhenGetAllItemRequestsAndSizeIsNegative() {
+        UserDto userDto = userService.create(user1);
+        UserDto requesterDto = userService.create(user2);
+
+        itemRequestService.create(itemRequestDto, requesterDto.getId());
+
+        ValidationException exception = assertThrows(ValidationException.class,
+                () -> itemRequestService.getAll(0, -1, userDto.getId()));
+        assertEquals("Параметр size должен быть больше 0 или равен null!", exception.getMessage());
+    }
+
+    @Test
+    void shouldExceptionWhenGetAllItemRequestsAndSizeIsZero() {
+        UserDto userDto = userService.create(user1);
+        UserDto requesterDto = userService.create(user2);
+
+        itemRequestService.create(itemRequestDto, requesterDto.getId());
+
+        ValidationException exception = assertThrows(ValidationException.class,
+                () -> itemRequestService.getAll(0, 0, userDto.getId()));
+        assertEquals("Параметр size должен быть больше 0 или равен null!", exception.getMessage());
+    }
+
+    @Test
+    void shouldExceptionWhenGetAllItemRequestsAndFromIsNegative() {
+        UserDto userDto = userService.create(user1);
+        UserDto requesterDto = userService.create(user2);
+
+        itemRequestService.create(itemRequestDto, requesterDto.getId());
+
+        ValidationException exception = assertThrows(ValidationException.class,
+                () -> itemRequestService.getAll(-1, null, userDto.getId()));
+        assertEquals("Параметр from должен быть >= 0 или равен null!", exception.getMessage());
     }
 
     @Test

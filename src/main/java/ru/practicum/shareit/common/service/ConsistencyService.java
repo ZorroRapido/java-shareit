@@ -1,6 +1,6 @@
-package ru.practicum.shareit.common;
+package ru.practicum.shareit.common.service;
 
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.booking.dto.BookingInputDto;
@@ -20,13 +20,13 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class ConsistencyService {
 
-    private final UserRepository userRepository;
-    private final ItemRepository itemRepository;
-    private final BookingRepository bookingRepository;
-    private final ItemRequestRepository itemRequestRepository;
+    private UserRepository userRepository;
+    private ItemRepository itemRepository;
+    private BookingRepository bookingRepository;
+    private ItemRequestRepository itemRequestRepository;
 
     public void checkStateExistence(String state) {
         var existingStates = Arrays.stream(State.values())

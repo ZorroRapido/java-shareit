@@ -12,6 +12,7 @@ import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.service.UserService;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
@@ -56,25 +57,6 @@ public class UserControllerTest {
     }
 
     @Test
-    void getUser() throws Exception {
-        when(userService.get(any(Long.class)))
-                .thenReturn(userDto);
-
-        mvc.perform(get("/users/1"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id", is(userDto.getId()), Long.class))
-                .andExpect(jsonPath("$.name", is(userDto.getName())))
-                .andExpect(jsonPath("$.email", is(userDto.getEmail())));
-    }
-
-    @Test
-    void deleteUser() throws Exception {
-        mvc.perform(delete("/users/1"))
-                .andExpect(status().isOk());
-    }
-
-    @Test
     void updateUser() throws Exception {
         when(userService.update(any(), any(Long.class)))
                 .thenReturn(userDto);
@@ -89,5 +71,42 @@ public class UserControllerTest {
                 .andExpect(jsonPath("$.id", is(userDto.getId()), Long.class))
                 .andExpect(jsonPath("$.name", is(userDto.getName())))
                 .andExpect(jsonPath("$.email", is(userDto.getEmail())));
+    }
+
+    @Test
+    void getUser() throws Exception {
+        when(userService.get(any(Long.class)))
+                .thenReturn(userDto);
+
+        mvc.perform(get("/users/1"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", is(userDto.getId()), Long.class))
+                .andExpect(jsonPath("$.name", is(userDto.getName())))
+                .andExpect(jsonPath("$.email", is(userDto.getEmail())));
+    }
+
+    @Test
+    void getAll() throws Exception {
+        List<UserDto> listUserDto = List.of(
+                new UserDto(1L, "user1", "first@user.ru"),
+                new UserDto(2L, "user2", "second@user.ru")
+        );
+
+        when(userService.getAll())
+                .thenReturn(listUserDto);
+
+        mvc.perform(get("/users")
+                        .characterEncoding(StandardCharsets.UTF_8)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json(mapper.writeValueAsString(listUserDto)));
+    }
+
+    @Test
+    void deleteUser() throws Exception {
+        mvc.perform(delete("/users/1"))
+                .andExpect(status().isOk());
     }
 }

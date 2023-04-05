@@ -9,7 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.repository.BookingRepository;
-import ru.practicum.shareit.common.ConsistencyService;
+import ru.practicum.shareit.common.service.ConsistencyService;
+import ru.practicum.shareit.common.util.PageRequestUtils;
 import ru.practicum.shareit.exception.ItemNotFoundException;
 import ru.practicum.shareit.exception.NotEnoughRightsException;
 import ru.practicum.shareit.item.dto.CommentDto;
@@ -22,7 +23,6 @@ import ru.practicum.shareit.item.repository.CommentRepository;
 import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
 
-import javax.validation.ValidationException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -38,10 +38,10 @@ public class ItemServiceImpl implements ItemService {
 
     private static final Sort ID_SORT = Sort.by("id");
     private final ConsistencyService consistencyService;
-    private final BookingRepository bookingRepository;
     private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
     private final ItemRepository itemRepository;
+    private final UserRepository userRepository;
     private final CommentMapper commentMapper;
     private final BookingMapper bookingMapper;
     private final ItemMapper itemMapper;
@@ -109,12 +109,7 @@ public class ItemServiceImpl implements ItemService {
     public List<ItemDto> getAll(Integer from, Integer size, Long userId) {
         consistencyService.checkUserExistence(userId);
 
-        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE, ID_SORT);
-
-        if (from != null && size != null) {
-            validatePageRequestParams(from, size);
-            pageRequest = PageRequest.of(from / size, size, ID_SORT);
-        }
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, ID_SORT);
 
         List<ItemDto> allItems = itemRepository.findByOwnerId(userId, pageRequest).stream()
                 .map(itemMapper::toItemDto)
@@ -145,12 +140,7 @@ public class ItemServiceImpl implements ItemService {
             return new ArrayList<>();
         }
 
-        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE, ID_SORT);
-
-        if (from != null && size != null) {
-            validatePageRequestParams(from, size);
-            pageRequest = PageRequest.of(from / size, size, ID_SORT);
-        }
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, ID_SORT);
 
         return itemRepository.search(text.toLowerCase(), pageRequest).stream()
                 .map(itemMapper::toItemDto)
@@ -205,17 +195,5 @@ public class ItemServiceImpl implements ItemService {
                 .filter(booking -> booking.getStart().isAfter(dateTime))
                 .min(Comparator.comparing(Booking::getStart))
                 .orElse(null);
-    }
-
-    private void validatePageRequestParams(Integer from, Integer size) {
-        if (size == 0) {
-            log.warn("Параметр size должен быть больше 0!");
-            throw new ValidationException("Параметр size должен быть больше 0!");
-        }
-
-        if (from < 0 || size < 0) {
-            log.warn("Параметры from и size не могут быть отрицательными!");
-            throw new ValidationException("Параметры from и size не могут быть отрицательными!");
-        }
     }
 }

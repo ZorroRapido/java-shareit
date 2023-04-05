@@ -13,7 +13,8 @@ import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.model.State;
 import ru.practicum.shareit.booking.model.Status;
 import ru.practicum.shareit.booking.repository.BookingRepository;
-import ru.practicum.shareit.common.ConsistencyService;
+import ru.practicum.shareit.common.service.ConsistencyService;
+import ru.practicum.shareit.common.util.PageRequestUtils;
 import ru.practicum.shareit.exception.BookingNotFoundException;
 import ru.practicum.shareit.exception.NotAvailableForBookingException;
 import ru.practicum.shareit.item.model.Item;
@@ -59,8 +60,8 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     @Override
     public BookingDto updateStatus(Long bookingId, Boolean approved, Long userId) {
+        consistencyService.checkUserExistence(userId);
         consistencyService.checkBookingExistence(bookingId);
-
         Booking booking = bookingRepository.getReferenceById(bookingId);
 
         if (!isOwner(userId, booking)) {
@@ -109,12 +110,7 @@ public class BookingServiceImpl implements BookingService {
 
         LocalDateTime dateTime = LocalDateTime.now();
         Sort sort = Sort.by(Sort.Direction.DESC, "start");
-        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE, sort);
-
-        if (from != null && size != null) {
-            validatePageRequestParams(from, size);
-            pageRequest = PageRequest.of(from / size, size, sort);
-        }
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, sort);
 
         switch (State.valueOf(state)) {
             case CURRENT:
@@ -154,12 +150,7 @@ public class BookingServiceImpl implements BookingService {
         consistencyService.checkStateExistence(state);
 
         LocalDateTime dateTime = LocalDateTime.now();
-        PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE);
-
-        if (from != null && size != null) {
-            validatePageRequestParams(from, size);
-            pageRequest = PageRequest.of(from / size, size);
-        }
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size);
 
         switch (State.valueOf(state)) {
             case CURRENT:
@@ -220,18 +211,6 @@ public class BookingServiceImpl implements BookingService {
             log.warn("Дата окончания бронирования не может быть раньше или равняться дате начала бронирования!");
             throw new ValidationException("Дата окончания бронирования не может быть раньше или равняться дате " +
                     "начала бронирования!");
-        }
-    }
-
-    private void validatePageRequestParams(Integer from, Integer size) {
-        if (size == 0) {
-            log.warn("Параметр size должен быть больше 0 или равен null!");
-            throw new ValidationException("Параметр size должен быть больше 0 или равен null!");
-        }
-
-        if (from < 0 || size < 0) {
-            log.warn("Параметры from и size не могут быть отрицательными!");
-            throw new ValidationException("Параметры from и size не могут быть отрицательными!");
         }
     }
 }

@@ -790,7 +790,7 @@ public class BookingServiceTest {
 
         ValidationException exp = assertThrows(ValidationException.class,
                 () -> bookingService.getAllBookingsForUserItems("ALL", -1, 2, ownerDto.getId()));
-        assertEquals("Параметры from и size не могут быть отрицательными!", exp.getMessage());
+        assertEquals("Параметр from должен быть >= 0 или равен null!", exp.getMessage());
     }
 
     @Test
@@ -808,7 +808,7 @@ public class BookingServiceTest {
 
         ValidationException exp = assertThrows(ValidationException.class,
                 () -> bookingService.getAllBookingsForUserItems("ALL", 0, -2, ownerDto.getId()));
-        assertEquals("Параметры from и size не могут быть отрицательными!", exp.getMessage());
+        assertEquals("Параметр size должен быть больше 0 или равен null!", exp.getMessage());
     }
 
     @Test
