@@ -35,8 +35,7 @@ public class BookingInputDtoTest {
         bookingInputDto = new BookingInputDto(
                 1L,
                 LocalDateTime.of(2030, 12, 25, 12, 0),
-                LocalDateTime.of(2030, 12, 26, 12, 0)
-        );
+                LocalDateTime.of(2030, 12, 26, 12, 0));
     }
 
     @Test

@@ -5,7 +5,7 @@ import lombok.Data;
 import ru.practicum.shareit.booking.dto.BookingShortDto;
 import ru.practicum.shareit.user.dto.UserDto;
 
-import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.util.List;
 
@@ -14,10 +14,10 @@ public class ItemDto {
 
     private Long id;
 
-    @NotEmpty(message = "Название (name) вещи не должно быть пустым!")
+    @NotBlank(message = "Название (name) вещи не должно быть пустым!")
     private String name;
 
-    @NotEmpty(message = "Описание (description) вещи не должно быть пустым!")
+    @NotBlank(message = "Описание (description) вещи не должно быть пустым!")
     private String description;
 
     @NotNull(message = "Не указан статус (available) вещи!")

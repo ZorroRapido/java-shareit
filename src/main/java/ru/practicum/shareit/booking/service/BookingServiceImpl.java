@@ -13,17 +13,15 @@ import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.model.State;
 import ru.practicum.shareit.booking.model.Status;
 import ru.practicum.shareit.booking.repository.BookingRepository;
+import ru.practicum.shareit.common.ConsistencyService;
 import ru.practicum.shareit.exception.BookingNotFoundException;
-import ru.practicum.shareit.exception.ItemNotFoundException;
 import ru.practicum.shareit.exception.NotAvailableForBookingException;
-import ru.practicum.shareit.exception.UserNotFoundException;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
 
 import javax.validation.ValidationException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -40,16 +38,17 @@ public class BookingServiceImpl implements BookingService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
+    private final ConsistencyService consistencyService;
 
     @Transactional
     @Override
     public BookingDto add(BookingInputDto bookingInputDto, Long userId) {
-        checkUserExistence(userId);
-        checkItemExistence(bookingInputDto);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkItemExistence(bookingInputDto);
 
-        validate(bookingInputDto, userId);
-
+        validateBookingInputDto(bookingInputDto, userId);
         Booking booking = bookingMapper.toBooking(bookingInputDto);
+
         booking.setStatus(Status.WAITING);
         booking.setItem(itemRepository.getReferenceById(bookingInputDto.getItemId()));
         booking.setBooker(userRepository.getReferenceById(userId));
@@ -60,15 +59,15 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     @Override
     public BookingDto updateStatus(Long bookingId, Boolean approved, Long userId) {
-        checkBookingExistence(bookingId);
+        consistencyService.checkBookingExistence(bookingId);
 
         Booking booking = bookingRepository.getReferenceById(bookingId);
 
         if (!isOwner(userId, booking)) {
-            String errorMessage = String.format("У пользователя c id = %d нет вещи c id = %d!", userId,
+            String errorMessage = String.format("Статус бронирования может изменить только владелец вещи с id = %d!",
                     booking.getItem().getId());
             log.warn(errorMessage);
-            throw new ItemNotFoundException(errorMessage);
+            throw new BookingNotFoundException(errorMessage);
         }
 
         if (WAITING.equals(booking.getStatus()) && approved) {
@@ -87,8 +86,8 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     @Override
     public BookingDto get(Long bookingId, Long userId) {
-        checkUserExistence(userId);
-        checkBookingExistence(bookingId);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkBookingExistence(bookingId);
 
         Booking booking = bookingRepository.getReferenceById(bookingId);
 
@@ -105,8 +104,8 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     @Override
     public List<BookingDto> getAllBookingsByUserId(String state, Integer from, Integer size, Long userId) {
-        checkUserExistence(userId);
-        checkStateExistence(state);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkStateExistence(state);
 
         LocalDateTime dateTime = LocalDateTime.now();
         Sort sort = Sort.by(Sort.Direction.DESC, "start");
@@ -114,7 +113,6 @@ public class BookingServiceImpl implements BookingService {
 
         if (from != null && size != null) {
             validatePageRequestParams(from, size);
-
             pageRequest = PageRequest.of(from / size, size, sort);
         }
 
@@ -152,15 +150,14 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     @Override
     public List<BookingDto> getAllBookingsForUserItems(String state, Integer from, Integer size, Long userId) {
-        checkUserExistence(userId);
-        checkStateExistence(state);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkStateExistence(state);
 
         LocalDateTime dateTime = LocalDateTime.now();
         PageRequest pageRequest = PageRequest.of(0, Integer.MAX_VALUE);
 
         if (from != null && size != null) {
             validatePageRequestParams(from, size);
-
             pageRequest = PageRequest.of(from / size, size);
         }
 
@@ -195,42 +192,6 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    private void checkStateExistence(String state) {
-        var existingStates = Arrays.stream(State.values())
-                .map(Enum::toString)
-                .collect(Collectors.toList());
-
-        if (!existingStates.contains(state)) {
-            String errorMessage = String.format("Unknown state: %s", state);
-            log.warn(errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-    }
-
-    private void checkUserExistence(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользователь c id = %d не найден!", userId);
-            log.warn(errorMessage);
-            throw new UserNotFoundException(errorMessage);
-        }
-    }
-
-    private void checkItemExistence(BookingInputDto bookingInputDto) {
-        if (!itemRepository.existsById(bookingInputDto.getItemId())) {
-            String errorMessage = String.format("Вещь с id = %d не найдена!", bookingInputDto.getItemId());
-            log.warn(errorMessage);
-            throw new ItemNotFoundException(errorMessage);
-        }
-    }
-
-    private void checkBookingExistence(Long bookingId) {
-        if (!bookingRepository.existsById(bookingId)) {
-            String errorMessage = String.format("Бронирование с id = %d не найдено!", bookingId);
-            log.warn(errorMessage);
-            throw new BookingNotFoundException(errorMessage);
-        }
-    }
-
     private boolean isOwner(Long userId, Booking booking) {
         return itemRepository.getReferenceById(booking.getItem().getId()).getOwner().getId().equals(userId);
     }
@@ -239,7 +200,7 @@ public class BookingServiceImpl implements BookingService {
         return booking.getBooker().getId().equals(userId);
     }
 
-    private void validate(BookingInputDto bookingInputDto, Long userId) {
+    private void validateBookingInputDto(BookingInputDto bookingInputDto, Long userId) {
         Item item = itemRepository.getReferenceById(bookingInputDto.getItemId());
 
         if (Boolean.FALSE.equals(item.getAvailable())) {
@@ -264,8 +225,8 @@ public class BookingServiceImpl implements BookingService {
 
     private void validatePageRequestParams(Integer from, Integer size) {
         if (size == 0) {
-            log.warn("Параметр size должен быть больше 0!");
-            throw new ValidationException("Параметр size должен быть больше 0!");
+            log.warn("Параметр size должен быть больше 0 или равен null!");
+            throw new ValidationException("Параметр size должен быть больше 0 или равен null!");
         }
 
         if (from < 0 || size < 0) {

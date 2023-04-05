@@ -26,8 +26,7 @@ public class BookingShortDtoTest {
                 1L,
                 LocalDateTime.of(2030, 12, 25, 12, 0),
                 LocalDateTime.of(2030, 12, 26, 12, 0),
-                2L
-        );
+                2L);
 
         JsonContent<BookingShortDto> result = json.write(bookingShortDto);
         assertThat(result).extractingJsonPathNumberValue("$.id").isEqualTo(1);

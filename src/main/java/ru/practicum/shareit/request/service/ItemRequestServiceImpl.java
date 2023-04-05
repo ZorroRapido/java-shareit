@@ -6,8 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.exception.ItemRequestNotFoundException;
-import ru.practicum.shareit.exception.UserNotFoundException;
+import ru.practicum.shareit.common.ConsistencyService;
 import ru.practicum.shareit.request.dto.ItemRequestDto;
 import ru.practicum.shareit.request.mapper.ItemRequestMapper;
 import ru.practicum.shareit.request.model.ItemRequest;
@@ -28,11 +27,12 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     private final ItemRequestRepository itemRequestRepository;
     private final UserRepository userRepository;
     private final ItemRequestMapper itemRequestMapper;
+    private final ConsistencyService consistencyService;
 
     @Transactional
     @Override
     public ItemRequestDto create(ItemRequestDto itemRequestDto, Long userId) {
-        checkUserExistence(userId);
+        consistencyService.checkUserExistence(userId);
 
         ItemRequest itemRequest = itemRequestMapper.toItemRequest(itemRequestDto);
         itemRequest.setRequester(userRepository.getReferenceById(userId));
@@ -44,7 +44,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     @Transactional(readOnly = true)
     @Override
     public List<ItemRequestDto> getOwn(Long userId) {
-        checkUserExistence(userId);
+        consistencyService.checkUserExistence(userId);
 
         return itemRequestRepository.findAllByRequesterId(userId).stream()
                 .map(itemRequestMapper::toItemRequestDto)
@@ -73,26 +73,10 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     @Transactional(readOnly = true)
     @Override
     public ItemRequestDto getById(Long requestId, Long userId) {
-        checkUserExistence(userId);
-        checkItemRequestExistence(requestId);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkItemRequestExistence(requestId);
 
         return itemRequestMapper.toItemRequestDto(itemRequestRepository.getReferenceById(requestId));
-    }
-
-    private void checkUserExistence(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользователь c id = %d не найден!", userId);
-            log.warn(errorMessage);
-            throw new UserNotFoundException(errorMessage);
-        }
-    }
-
-    private void checkItemRequestExistence(Long requestId) {
-        if (!itemRequestRepository.existsById(requestId)) {
-            String errorMessage = String.format("Запрос c id = %d не найден!", requestId);
-            log.warn(errorMessage);
-            throw new ItemRequestNotFoundException(errorMessage);
-        }
     }
 
     private void validatePageRequestParams(Integer from, Integer size) {

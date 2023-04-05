@@ -17,13 +17,13 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @JsonTest
-public class UserDtoTest {
+public class UserTest {
 
     private final Validator validator;
     private final JacksonTester<User> json;
     private User user;
 
-    public UserDtoTest(@Autowired JacksonTester<User> json) {
+    public UserTest(@Autowired JacksonTester<User> json) {
         this.json = json;
         ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
         validator = factory.getValidator();

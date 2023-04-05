@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.shareit.common.ConsistencyService;
 import ru.practicum.shareit.exception.EmailAlreadyExistsException;
-import ru.practicum.shareit.exception.UserNotFoundException;
-import ru.practicum.shareit.user.mapper.UserMapper;
 import ru.practicum.shareit.user.dto.UserDto;
+import ru.practicum.shareit.user.mapper.UserMapper;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.user.repository.UserRepository;
 
@@ -24,6 +24,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private static final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
     private final UserMapper userMapper;
+    private final ConsistencyService consistencyService;
 
     @Transactional
     @Override
@@ -40,11 +41,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Override
     public UserDto update(User user, Long userId) {
-        if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользовать с id = %d не найден!", userId);
-            log.warn(errorMessage);
-            throw new UserNotFoundException(errorMessage);
-        }
+        consistencyService.checkUserExistence(userId);
 
         if (userRepository.existsByEmail(user.getEmail()) && !get(userId).getEmail().equals(user.getEmail())) {
             String errorMessage = String.format("E-mail '%s' занят другим пользователем!", user.getEmail());
@@ -52,8 +49,7 @@ public class UserServiceImpl implements UserService {
             throw new EmailAlreadyExistsException(errorMessage);
         }
 
-        validate(user);
-
+        validateUser(user);
         User oldUser = userRepository.getReferenceById(userId);
 
         if (user.getName() != null) {
@@ -70,12 +66,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     @Override
     public UserDto get(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользователь с id = %d не найден!", userId);
-            log.warn(errorMessage);
-            throw new UserNotFoundException(errorMessage);
-        }
-
+        consistencyService.checkUserExistence(userId);
         return userMapper.toUserDto(userRepository.getReferenceById(userId));
     }
 
@@ -93,7 +84,7 @@ public class UserServiceImpl implements UserService {
         userRepository.deleteById(userId);
     }
 
-    private void validate(User user) {
+    private void validateUser(User user) {
         if (user.getEmail() != null) {
             validator.validateProperty(user, "email");
         }

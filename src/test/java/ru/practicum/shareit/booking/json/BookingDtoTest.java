@@ -30,7 +30,8 @@ public class BookingDtoTest {
                 LocalDateTime.of(2030, 12, 25, 12, 0),
                 LocalDateTime.of(2030, 12, 26, 12, 0),
                 new ItemDto(1L, "item1", "description1", true, null, null),
-                new UserDto(2L, "user1", "second@user.ru"), Status.WAITING);
+                new UserDto(2L, "user1", "second@user.ru"),
+                Status.WAITING);
 
         JsonContent<BookingDto> result = json.write(bookingDto);
         assertThat(result).extractingJsonPathNumberValue("$.id").isEqualTo(1);

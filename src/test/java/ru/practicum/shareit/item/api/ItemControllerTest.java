@@ -43,8 +43,7 @@ public class ItemControllerTest {
 
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
     private final UserDto userDto = new UserDto(1L, "user1", "first@user.ru");
-    private final ItemDto itemDto = new ItemDto(1L, "item1", "description1", true, userDto,
-            null);
+    private final ItemDto itemDto = new ItemDto(1L, "item1", "description1", true, userDto, null);
     private final CommentDto commentDto = new CommentDto(1L, "Text comment", userDto.getName(),
             LocalDateTime.of(2022, 3, 5, 1, 2, 3));
 
@@ -86,7 +85,7 @@ public class ItemControllerTest {
     }
 
     @Test
-    void getItemsByOwner() throws Exception {
+    void getItemsByUserId() throws Exception {
         when(itemService.getAll(nullable(Integer.class), nullable(Integer.class), any(Long.class)))
                 .thenReturn(List.of(itemDto));
 
@@ -104,7 +103,7 @@ public class ItemControllerTest {
     }
 
     @Test
-    void updateItem() throws Exception {
+    void editItem() throws Exception {
         when(itemService.edit(any(), any(Long.class), any(Long.class)))
                 .thenReturn(itemDto);
 
@@ -123,7 +122,7 @@ public class ItemControllerTest {
     }
 
     @Test
-    void getItemsBySearchQuery() throws Exception {
+    void searchItem() throws Exception {
         when(itemService.search(any(String.class), nullable(Integer.class), nullable(Integer.class)))
                 .thenReturn(List.of(itemDto));
 
@@ -141,7 +140,7 @@ public class ItemControllerTest {
     }
 
     @Test
-    void createComment() throws Exception {
+    void addComment() throws Exception {
         when(itemService.addComment(any(), any(Long.class), any(Long.class)))
                 .thenReturn(commentDto);
 

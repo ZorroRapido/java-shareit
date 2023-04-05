@@ -37,10 +37,10 @@ public class BookingControllerTest {
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @Autowired
-    private ObjectMapper mapper;
+    ObjectMapper mapper;
 
     @MockBean
-    private BookingService bookingService;
+    BookingService bookingService;
 
     @Autowired
     private MockMvc mvc;
@@ -54,12 +54,12 @@ public class BookingControllerTest {
             1L,
             LocalDateTime.of(2030, 12, 25, 12, 0, 0),
             LocalDateTime.of(2030, 12, 26, 12, 0, 0),
-            new ItemDto(1L, "FirstItem", "DescriptionOfFirstItem", true, null, null),
-            new UserDto(2L, "SecondUser", "second@email.ru"),
+            new ItemDto(1L, "itemDto1", "description1", true, null, null),
+            new UserDto(2L, "userDto2", "second@user.ru"),
             Status.WAITING);
 
     @Test
-    void createBookingTest() throws Exception {
+    void addBookingTest() throws Exception {
         when(bookingService.add(any(), any(Long.class)))
                 .thenReturn(bookingDto);
 
@@ -147,7 +147,7 @@ public class BookingControllerTest {
     }
 
     @Test
-    void updateBookingTest() throws Exception {
+    void updateBookingStatusTest() throws Exception {
         when(bookingService.updateStatus(any(Long.class), any(Boolean.class), any(Long.class)))
                 .thenReturn(bookingDto);
 
