@@ -37,10 +37,10 @@ public class BookingControllerTest {
     private static final String USER_ID_HEADER = "X-Sharer-User-Id";
 
     @Autowired
-    ObjectMapper mapper;
+    private ObjectMapper mapper;
 
     @MockBean
-    BookingService bookingService;
+    private BookingService bookingService;
 
     @Autowired
     private MockMvc mvc;

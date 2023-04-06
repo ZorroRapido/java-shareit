@@ -2,6 +2,7 @@ package ru.practicum.shareit.user.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -17,6 +18,7 @@ import javax.validation.constraints.NotNull;
 @Entity
 @Table(name = "users")
 @AllArgsConstructor
+@NoArgsConstructor
 public class User {
 
     @Id
@@ -30,8 +32,4 @@ public class User {
     @Email(message = "Неверный формат поля email!")
     @Column(unique = true)
     private String email;
-
-    public User() {
-
-    }
 }
