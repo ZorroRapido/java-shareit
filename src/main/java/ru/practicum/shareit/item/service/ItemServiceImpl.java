@@ -2,14 +2,17 @@ package ru.practicum.shareit.item.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.repository.BookingRepository;
+import ru.practicum.shareit.common.service.ConsistencyService;
+import ru.practicum.shareit.common.util.PageRequestUtils;
 import ru.practicum.shareit.exception.ItemNotFoundException;
 import ru.practicum.shareit.exception.NotEnoughRightsException;
-import ru.practicum.shareit.exception.UserNotFoundException;
 import ru.practicum.shareit.item.dto.CommentDto;
 import ru.practicum.shareit.item.dto.ItemDto;
 import ru.practicum.shareit.item.mapper.CommentMapper;
@@ -33,18 +36,20 @@ import static ru.practicum.shareit.booking.model.Status.APPROVED;
 @RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
 
-    private final UserRepository userRepository;
-    private final ItemRepository itemRepository;
-    private final BookingRepository bookingRepository;
+    private static final Sort ID_SORT = Sort.by("id");
+    private final ConsistencyService consistencyService;
     private final CommentRepository commentRepository;
-    private final ItemMapper itemMapper;
+    private final BookingRepository bookingRepository;
+    private final ItemRepository itemRepository;
+    private final UserRepository userRepository;
     private final CommentMapper commentMapper;
     private final BookingMapper bookingMapper;
+    private final ItemMapper itemMapper;
 
     @Transactional
     @Override
     public ItemDto add(ItemDto itemDto, Long userId) {
-        checkUserExistence(userId);
+        consistencyService.checkUserExistence(userId);
 
         Item item = itemMapper.toItem(itemDto);
         item.setOwner(userRepository.getReferenceById(userId));
@@ -55,8 +60,8 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     @Override
     public ItemDto edit(ItemDto itemDto, Long itemId, Long userId) {
-        checkUserExistence(userId);
-        checkItemExistence(itemId);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkItemExistence(itemId);
 
         Item item = itemRepository.getReferenceById(itemId);
 
@@ -84,7 +89,7 @@ public class ItemServiceImpl implements ItemService {
     @Transactional(readOnly = true)
     @Override
     public ItemDto get(Long itemId, Long userId) {
-        checkItemExistence(itemId);
+        consistencyService.checkItemExistence(itemId);
 
         Item item = itemRepository.getReferenceById(itemId);
         ItemDto itemDto = itemMapper.toItemDto(item);
@@ -101,8 +106,12 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ItemDto> getAll(Long userId) {
-        List<ItemDto> allItems = itemRepository.findByOwnerId(userId).stream()
+    public List<ItemDto> getAll(Integer from, Integer size, Long userId) {
+        consistencyService.checkUserExistence(userId);
+
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, ID_SORT);
+
+        List<ItemDto> allItems = itemRepository.findByOwnerId(userId, pageRequest).stream()
                 .map(itemMapper::toItemDto)
                 .sorted(Comparator.comparing(ItemDto::getId))
                 .collect(Collectors.toList());
@@ -126,12 +135,14 @@ public class ItemServiceImpl implements ItemService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ItemDto> search(String text) {
+    public List<ItemDto> search(String text, Integer from, Integer size) {
         if (text.isBlank()) {
             return new ArrayList<>();
         }
 
-        return itemRepository.search(text.toLowerCase()).stream()
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, ID_SORT);
+
+        return itemRepository.search(text.toLowerCase(), pageRequest).stream()
                 .map(itemMapper::toItemDto)
                 .collect(Collectors.toList());
     }
@@ -139,7 +150,7 @@ public class ItemServiceImpl implements ItemService {
     @Transactional
     @Override
     public CommentDto addComment(CommentDto commentDto, Long itemId, Long userId) {
-        checkUserExistence(userId);
+        consistencyService.checkUserExistence(userId);
 
         LocalDateTime dateTime = LocalDateTime.now();
         List<Booking> bookings = bookingRepository.findPastAndCurrentActiveBookingsByBookerIdAndItemId(userId, itemId,
@@ -158,22 +169,6 @@ public class ItemServiceImpl implements ItemService {
         comment.setCreated(dateTime);
 
         return commentMapper.toCommentDto(commentRepository.save(comment));
-    }
-
-    private void checkUserExistence(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользовать с id = %d не найден!", userId);
-            log.warn(errorMessage);
-            throw new UserNotFoundException(String.format(errorMessage));
-        }
-    }
-
-    private void checkItemExistence(Long itemId) {
-        if (!itemRepository.existsById(itemId)) {
-            String errorMessage = String.format("Вещь с id = %d не найдена!", itemId);
-            log.warn(errorMessage);
-            throw new ItemNotFoundException(errorMessage);
-        }
     }
 
     private boolean isOwner(Long userId, Long itemId) {

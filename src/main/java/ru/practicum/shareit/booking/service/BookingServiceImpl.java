@@ -2,6 +2,7 @@ package ru.practicum.shareit.booking.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,17 +13,16 @@ import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.model.State;
 import ru.practicum.shareit.booking.model.Status;
 import ru.practicum.shareit.booking.repository.BookingRepository;
+import ru.practicum.shareit.common.service.ConsistencyService;
+import ru.practicum.shareit.common.util.PageRequestUtils;
 import ru.practicum.shareit.exception.BookingNotFoundException;
-import ru.practicum.shareit.exception.ItemNotFoundException;
 import ru.practicum.shareit.exception.NotAvailableForBookingException;
-import ru.practicum.shareit.exception.UserNotFoundException;
 import ru.practicum.shareit.item.model.Item;
 import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.user.repository.UserRepository;
 
 import javax.validation.ValidationException;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,16 +39,17 @@ public class BookingServiceImpl implements BookingService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
     private final BookingMapper bookingMapper;
+    private final ConsistencyService consistencyService;
 
     @Transactional
     @Override
     public BookingDto add(BookingInputDto bookingInputDto, Long userId) {
-        checkUserExistence(userId);
-        checkItemExistence(bookingInputDto);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkItemExistence(bookingInputDto);
 
-        validate(bookingInputDto, userId);
-
+        validateBookingInputDto(bookingInputDto, userId);
         Booking booking = bookingMapper.toBooking(bookingInputDto);
+
         booking.setStatus(Status.WAITING);
         booking.setItem(itemRepository.getReferenceById(bookingInputDto.getItemId()));
         booking.setBooker(userRepository.getReferenceById(userId));
@@ -59,15 +60,15 @@ public class BookingServiceImpl implements BookingService {
     @Transactional
     @Override
     public BookingDto updateStatus(Long bookingId, Boolean approved, Long userId) {
-        checkBookingExistence(bookingId);
-
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkBookingExistence(bookingId);
         Booking booking = bookingRepository.getReferenceById(bookingId);
 
         if (!isOwner(userId, booking)) {
-            String errorMessage = String.format("У пользователя c id = %d нет вещи c id = %d!", userId,
+            String errorMessage = String.format("Статус бронирования может изменить только владелец вещи с id = %d!",
                     booking.getItem().getId());
             log.warn(errorMessage);
-            throw new ItemNotFoundException(errorMessage);
+            throw new BookingNotFoundException(errorMessage);
         }
 
         if (WAITING.equals(booking.getStatus()) && approved) {
@@ -86,8 +87,8 @@ public class BookingServiceImpl implements BookingService {
     @Transactional(readOnly = true)
     @Override
     public BookingDto get(Long bookingId, Long userId) {
-        checkUserExistence(userId);
-        checkBookingExistence(bookingId);
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkBookingExistence(bookingId);
 
         Booking booking = bookingRepository.getReferenceById(bookingId);
 
@@ -103,38 +104,40 @@ public class BookingServiceImpl implements BookingService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<BookingDto> getAllBookingsByUserId(Long userId, String state) {
-        checkUserExistence(userId);
-        checkStateExistence(state);
+    public List<BookingDto> getAllBookingsByUserId(String state, Integer from, Integer size, Long userId) {
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkStateExistence(state);
 
         LocalDateTime dateTime = LocalDateTime.now();
         Sort sort = Sort.by(Sort.Direction.DESC, "start");
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size, sort);
 
         switch (State.valueOf(state)) {
             case CURRENT:
                 return bookingRepository.findByBookerIdAndStartIsBeforeAndEndIsAfter(userId, dateTime, dateTime,
-                                sort).stream()
+                                pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case PAST:
-                return bookingRepository.findByBookerIdAndStatusAndEndIsBefore(userId, APPROVED, dateTime, sort).stream()
+                return bookingRepository.findByBookerIdAndStatusAndEndIsBefore(userId, APPROVED, dateTime,
+                                pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case FUTURE:
                 return bookingRepository.findByBookerIdAndStatusInAndStartIsAfter(userId, List.of(APPROVED, WAITING),
-                                dateTime, sort).stream()
+                                dateTime, pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case WAITING:
-                return bookingRepository.findByBookerIdAndStatus(userId, Status.WAITING, sort).stream()
+                return bookingRepository.findByBookerIdAndStatus(userId, Status.WAITING, pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case REJECTED:
-                return bookingRepository.findByBookerIdAndStatus(userId, Status.REJECTED, sort).stream()
+                return bookingRepository.findByBookerIdAndStatus(userId, Status.REJECTED, pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             default:
-                return bookingRepository.findByBookerId(userId, sort).stream()
+                return bookingRepository.findByBookerId(userId, pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
         }
@@ -142,76 +145,41 @@ public class BookingServiceImpl implements BookingService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<BookingDto> getAllBookingsForUserItems(Long userId, String state) {
-        checkUserExistence(userId);
-        checkStateExistence(state);
+    public List<BookingDto> getAllBookingsForUserItems(String state, Integer from, Integer size, Long userId) {
+        consistencyService.checkUserExistence(userId);
+        consistencyService.checkStateExistence(state);
 
         LocalDateTime dateTime = LocalDateTime.now();
+        PageRequest pageRequest = PageRequestUtils.getPageRequest(from, size);
 
         switch (State.valueOf(state)) {
             case CURRENT:
-                return bookingRepository.findAllBookingsByOwner(userId).stream()
+                return bookingRepository.findAllBookingsByOwner(userId, pageRequest).stream()
                         .filter(booking -> booking.getStart().isBefore(dateTime) && booking.getEnd().isAfter(dateTime))
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case PAST:
-                return bookingRepository.findAllBookingsByOwner(userId, List.of(APPROVED)).stream()
+                return bookingRepository.findAllBookingsByOwner(userId, List.of(APPROVED), pageRequest).stream()
                         .filter(booking -> booking.getEnd().isBefore(dateTime))
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case FUTURE:
-                return bookingRepository.findAllBookingsByOwner(userId, List.of(APPROVED, WAITING)).stream()
+                return bookingRepository.findAllBookingsByOwner(userId, List.of(APPROVED, WAITING), pageRequest).stream()
                         .filter(booking -> booking.getStart().isAfter(dateTime))
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case WAITING:
-                return bookingRepository.findAllBookingsByOwner(userId, List.of(WAITING)).stream()
+                return bookingRepository.findAllBookingsByOwner(userId, List.of(WAITING), pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             case REJECTED:
-                return bookingRepository.findAllBookingsByOwner(userId, List.of(REJECTED)).stream()
+                return bookingRepository.findAllBookingsByOwner(userId, List.of(REJECTED), pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
             default:
-                return bookingRepository.findAllBookingsByOwner(userId).stream()
+                return bookingRepository.findAllBookingsByOwner(userId, pageRequest).stream()
                         .map(bookingMapper::toBookingDto)
                         .collect(Collectors.toList());
-        }
-    }
-
-    private void checkStateExistence(String state) {
-        var existingStates = Arrays.stream(State.values())
-                .map(Enum::toString)
-                .collect(Collectors.toList());
-
-        if (!existingStates.contains(state)) {
-            String errorMessage = String.format("Unknown state: %s", state);
-            log.warn(errorMessage);
-            throw new ValidationException(errorMessage);
-        }
-    }
-
-    private void checkUserExistence(Long userId) {
-        if (!userRepository.existsById(userId)) {
-            String errorMessage = String.format("Пользователь c id = %d не найден!", userId);
-            log.warn(errorMessage);
-            throw new UserNotFoundException(errorMessage);
-        }
-    }
-
-    private void checkItemExistence(BookingInputDto bookingInputDto) {
-        if (!itemRepository.existsById(bookingInputDto.getItemId())) {
-            String errorMessage = String.format("Вещь с id = %d не найдена!", bookingInputDto.getItemId());
-            log.warn(errorMessage);
-            throw new ItemNotFoundException(errorMessage);
-        }
-    }
-
-    private void checkBookingExistence(Long bookingId) {
-        if (!bookingRepository.existsById(bookingId)) {
-            String errorMessage = String.format("Бронирование с id = %d не найдено!", bookingId);
-            log.warn(errorMessage);
-            throw new BookingNotFoundException(errorMessage);
         }
     }
 
@@ -223,7 +191,7 @@ public class BookingServiceImpl implements BookingService {
         return booking.getBooker().getId().equals(userId);
     }
 
-    private void validate(BookingInputDto bookingInputDto, Long userId) {
+    private void validateBookingInputDto(BookingInputDto bookingInputDto, Long userId) {
         Item item = itemRepository.getReferenceById(bookingInputDto.getItemId());
 
         if (Boolean.FALSE.equals(item.getAvailable())) {
