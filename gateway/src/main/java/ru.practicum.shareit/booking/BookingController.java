@@ -54,7 +54,6 @@ public class BookingController {
         return bookingClient.getBooking(userId, bookingId);
     }
 
-    // TODO: убрать defaultValue
     @GetMapping
     public ResponseEntity<Object> getAllBookingsByUserId(@RequestHeader(USER_ID_HEADER) Long userId,
                                                          @RequestParam(name = "state", defaultValue = "ALL") String stateParam,

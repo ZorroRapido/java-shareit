@@ -28,7 +28,6 @@ public class ErrorHandler {
     @ExceptionHandler
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handleIllegalArgumentException(final IllegalArgumentException e) {
-//        return Map.of("error", e.getMessage());
         return new ErrorResponse(e.getMessage());
     }
 
@@ -38,8 +37,6 @@ public class ErrorHandler {
         List<String> errors = e.getBindingResult().getFieldErrors()
                 .stream().map(FieldError::getDefaultMessage).collect(Collectors.toList());
         return new ResponseEntity<>(getErrorsMap(errors), HttpStatus.BAD_REQUEST);
-
-//        return new ErrorResponse(e.getMessage());
     }
 
     @ExceptionHandler

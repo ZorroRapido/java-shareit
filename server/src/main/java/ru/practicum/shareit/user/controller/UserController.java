@@ -30,11 +30,6 @@ public class UserController {
         return ResponseEntity.ok().body(userService.create(user));
     }
 
-//    @PatchMapping("/{userId}")
-//    public ResponseEntity<UserDto> updateUser(@RequestBody User user, @PathVariable("userId") Long userId) {
-//        return ResponseEntity.ok().body(userService.update(user, userId));
-//    }
-
     @PatchMapping("/{userId}")
     public UserDto updateUser(@RequestBody User user, @PathVariable("userId") Long userId) {
         return userService.update(user, userId);
